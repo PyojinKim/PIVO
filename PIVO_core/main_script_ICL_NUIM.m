@@ -8,7 +8,7 @@ dbstop if error;
 %% basic setup for PIVO
 
 % choose the experiment case
-% ICSL dataset (1~4)
+% ICL NUIM dataset (1~8)
 expCase = 1;
 
 % are figures drawn?
@@ -22,24 +22,61 @@ toVisualize = 1;
 toSave = 1;
 
 
-setupParams_ICSL;
+setupParams_ICL_NUIM;
 
 
-% load ICSL dataset data
-imLeftDir = [ datasetPath '/mav0/cam0/data/' ];
-imRightDir = [ datasetPath '/mav0/cam1/data/' ];
+% load ICL NUIM dataset data
+rawICLNUIMdataset = rawICLNUIMdataset_load(datasetPath);
 
 
 % camera calibration parameters
-ICSLdataset = dir(imLeftDir);
-ICSLdataset(1:2) = [];
-ICSLdataset = ICSLdataset(imInit:(imInit+M-1));
-opts = load_param_PIVO;
-cam = initialize_cam_ICSL(opts.maxPyramidLevel);
+[ICLNUIMdataset] = getSyncTUMRGBDdataset(rawICLNUIMdataset, imInit, M);
+optsPIVO = load_param_PIVO;
+cam = initialize_cam_ICSL(optsPIVO.maxPyramidLevel);
+
+
+%% load ground truth data
+
+% ground truth trajectory in ICL NUIM dataset
+R_gc_true = zeros(3,3,M);
+p_gc_true = zeros(3,M);
+T_gc_true = cell(1,M);
+for k = 1:M
+    % camera body frame
+    R_gc_true(:,:,k) = q2r(ICLNUIMdataset.vicon.q_gc_Sync(:,k));
+    p_gc_true(:,k) = ICLNUIMdataset.vicon.p_gc_Sync(:,k);
+    T_gc_true{k} = [ R_gc_true(:,:,k), p_gc_true(:,k);
+        zeros(1,3),           1; ];
+end
+if (toVisualize)
+    figure; hold on; axis equal;
+    L = 0.1; % coordinate axis length
+    A = [0 0 0 1; L 0 0 1; 0 0 0 1; 0 L 0 1; 0 0 0 1; 0 0 L 1]';
+    
+    for k = 1:10:M
+        T = T_gc_true{k};
+        B = T * A;
+        plot3(B(1,1:2),B(2,1:2),B(3,1:2),'-r','LineWidth',1); % x: red
+        plot3(B(1,3:4),B(2,3:4),B(3,3:4),'-g','LineWidth',1); % y: green
+        plot3(B(1,5:6),B(2,5:6),B(3,5:6),'-b','LineWidth',1); % z: blue
+    end
+    plot3(p_gc_true(1,:),p_gc_true(2,:),p_gc_true(3,:),'k','LineWidth',2);
+    
+    title('ground truth trajectory of cam0 frame')
+    xlabel('x'); ylabel('y'); zlabel('z');
+end
+
+
+% generate ground truth trajectory in vector form
+stateTrue = zeros(6,M);
+stateTrue(1:3,:) = p_gc_true;
+for k = 1:size(p_gc_true,2)
+    [yaw, pitch, roll] = dcm2angle(R_gc_true(:,:,k));
+    stateTrue(4:6,k) = [roll; pitch; yaw];
+end
 
 
 %% main PIVO part
-
 
 % initialize variables for PIVO
 T_gc_PIVO = cell(1,M);
@@ -72,15 +109,15 @@ end
 for imgIdx = 2:M
     
     % keyframe image
-    imageLast = getImgInICSLdataset(imLeftDir, imRightDir, ICSLdataset, cam, (imgIdx-1), 'gray');
-    depthLast = getImgInICSLdataset(imLeftDir, imRightDir, ICSLdataset, cam, (imgIdx-1), 'depth');
-    [imageLastPyramid, depthLastPyramid, featuresPyramid] = getPatchImgPyramidinMAV(imageLast, depthLast, opts);
+    imageLast = getImgInICSLdataset(imLeftDir, imRightDir, ICLNUIMdataset, cam, (imgIdx-1), 'gray');
+    depthLast = getImgInICSLdataset(imLeftDir, imRightDir, ICLNUIMdataset, cam, (imgIdx-1), 'depth');
+    [imageLastPyramid, depthLastPyramid, featuresPyramid] = getPatchImgPyramidinMAV(imageLast, depthLast, optsPIVO);
     featureNum = size(featuresPyramid{1}, 2);
     
     
     % current image
-    imageCur = getImgInICSLdataset(imLeftDir, imRightDir, ICSLdataset, cam, imgIdx, 'gray');
-    [imageCurPyramid,~] = getImgPyramid(imageCur, eye(32), opts.maxPyramidLevel);
+    imageCur = getImgInICSLdataset(imLeftDir, imRightDir, ICLNUIMdataset, cam, imgIdx, 'gray');
+    [imageCurPyramid,~] = getImgPyramid(imageCur, eye(32), optsPIVO.maxPyramidLevel);
     
     
     % frame to frame motion estimation
@@ -91,17 +128,17 @@ for imgIdx = 2:M
     illParam_Rec = illParam_ini;
     numIterPyramid = zeros(5,1);
     
-    for L = (opts.maxPyramidLevel):-1:(opts.minPyramidLevel)
+    for L = (optsPIVO.maxPyramidLevel):-1:(optsPIVO.minPyramidLevel)
         
         % assign current pyramid
         I1 = imageLastPyramid{L};
         D1 = depthLastPyramid{L};
         featurePts = featuresPyramid{L};
         I2 = imageCurPyramid{L};
-        winSize = opts.patchWinSize(L);
+        winSize = optsPIVO.patchWinSize(L);
         K = cam.K_pyramid(:,:,L);
         
-        [T_21_Rec, illParam_Rec, meanError, numIter] = estimateCameraMotion_mex(I1, D1, featurePts, featureNum, I2, winSize, K, T_21_Rec, illParam_Rec);
+        [T_21_Rec, illParam_Rec, meanError, numIter] = estimateCameraMotion(I1, D1, featurePts, featureNum, I2, winSize, K, T_21_Rec, illParam_Rec);
         numIterPyramid(L) = numIter;
     end
     
@@ -125,7 +162,7 @@ for imgIdx = 2:M
         
         
         % visualize current status
-        plots_ICSL;
+        plots_ICL_NUIM;
     end
     
     
