@@ -56,17 +56,17 @@ for i = 2:optsPIVO.maxPyramidLevel
 end
 
 
-%% 4. (optional) failure case
+%% 2. manual keypoints detection (optional)
 
 % for EuRoC MAV dataset
 [rows,cols] = size(grayImg);
 rowsUnit = round(rows/4);
-colsUnit = round(cols/6);
-keyPtsAll = zeros(2,24);
+colsUnit = round(cols/5);
+keyPtsAll = zeros(2,20);
 
 ptsCnt = 0;
 for i = 1:4
-    for j = 1:6
+    for j = 1:5
         ptsCnt = ptsCnt + 1;
         
         keyPtsAll(1,ptsCnt) = round((colsUnit*j) - (colsUnit/2) + 1);    % u pixel

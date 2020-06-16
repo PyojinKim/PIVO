@@ -32,7 +32,7 @@ rawICLNUIMdataset = rawICLNUIMdataset_load(datasetPath);
 % camera calibration parameters
 [ICLNUIMdataset] = getSyncTUMRGBDdataset(rawICLNUIMdataset, imInit, M);
 optsPIVO = load_param_PIVO;
-cam = initialize_cam_ICSL(optsPIVO.maxPyramidLevel);
+cam = initialize_cam_ICL_NUIM(ICLNUIMdataset, optsPIVO.maxPyramidLevel);
 
 
 %% load ground truth data
@@ -86,7 +86,7 @@ numIterRec = cell(1,M);
 
 
 % rigid body transformation of the first frame
-T_gc_current = eye(4);
+T_gc_current = T_gc_true{1};
 T_gc_PIVO{1} = T_gc_current;
 
 
@@ -109,20 +109,20 @@ end
 for imgIdx = 2:M
     
     % keyframe image
-    imageLast = getImgInICSLdataset(imLeftDir, imRightDir, ICLNUIMdataset, cam, (imgIdx-1), 'gray');
-    depthLast = getImgInICSLdataset(imLeftDir, imRightDir, ICLNUIMdataset, cam, (imgIdx-1), 'depth');
+    imageLast = getImgInTUMRGBDdataset(datasetPath, ICLNUIMdataset, cam, (imgIdx-1), 'rgb');
+    depthLast = getImgInTUMRGBDdataset(datasetPath, ICLNUIMdataset, cam, (imgIdx-1), 'depth');
     [imageLastPyramid, depthLastPyramid, featuresPyramid] = getPatchImgPyramidinMAV(imageLast, depthLast, optsPIVO);
-    featureNum = size(featuresPyramid{1}, 2);
+    featureNum = size(featuresPyramid{1},2);
     
     
     % current image
-    imageCur = getImgInICSLdataset(imLeftDir, imRightDir, ICLNUIMdataset, cam, imgIdx, 'gray');
+    imageCur = getImgInTUMRGBDdataset(datasetPath, ICLNUIMdataset, cam, imgIdx, 'gray');
     [imageCurPyramid,~] = getImgPyramid(imageCur, eye(32), optsPIVO.maxPyramidLevel);
     
     
     % frame to frame motion estimation
     T_21_ini = eye(4);
-    illParam_ini = [ones(1, featureNum); zeros(1, featureNum)];
+    illParam_ini = [ones(1,featureNum); zeros(1,featureNum)];
     
     T_21_Rec = T_21_ini;
     illParam_Rec = illParam_ini;
@@ -138,7 +138,7 @@ for imgIdx = 2:M
         winSize = optsPIVO.patchWinSize(L);
         K = cam.K_pyramid(:,:,L);
         
-        [T_21_Rec, illParam_Rec, meanError, numIter] = estimateCameraMotion(I1, D1, featurePts, featureNum, I2, winSize, K, T_21_Rec, illParam_Rec);
+        [T_21_Rec, illParam_Rec, meanError, numIter] = estimateCameraMotion_mex(I1, D1, featurePts, featureNum, I2, winSize, K, T_21_Rec, illParam_Rec);
         numIterPyramid(L) = numIter;
     end
     
@@ -181,22 +181,46 @@ end
 
 %% plot error metric value (RPE, ATE)
 
-
 % 1) PIVO motion estimation trajectory results
 figure;
-plot3(stateEsti_PIVO(1,:),stateEsti_PIVO(2,:),stateEsti_PIVO(3,:),'r','LineWidth',2); hold on; grid on;
-legend('PIVO Matlab'); plot_inertial_frame(0.5); axis equal; view(-158, 38);
+plot3(stateTrue(1,:),stateTrue(2,:),stateTrue(3,:),'k','LineWidth',2); hold on; grid on;
+plot3(stateEsti_PIVO(1,:),stateEsti_PIVO(2,:),stateEsti_PIVO(3,:),'r','LineWidth',2);
+legend('True','PIVO Matlab'); plot_inertial_frame(0.5); axis equal; view(-158, 38);
 xlabel('x [m]','fontsize',10); ylabel('y [m]','fontsize',10); zlabel('z [m]','fontsize',10); hold off;
 
 
-% 2) each frame's residual result of PIVO
+% 2) calculate RPE / ATE / EPE error metric for PIVO
+[RPE_RMSE_PIVO,RPE_PIVO] = calcRPE(T_gc_PIVO, T_gc_true, 30, 'RMSE');
+[ATE_RMSE_PIVO,ATE_PIVO] = calcATE(T_gc_PIVO, T_gc_true, 'RMSE');
+[EPE_PIVO,lengthDataset] = calcEPE(stateEsti_PIVO, stateTrue);
+fprintf('*******************************\n')
+fprintf('RMSE of RPE [drift m/s] : %f \n' , RPE_RMSE_PIVO);
+fprintf('RMSE of ATE [m] : %f \n' , ATE_RMSE_PIVO);
+fprintf('EPE [%%] : %f \n' , EPE_PIVO);
+fprintf('Total traveled distance [m] : %f \n' , lengthDataset);
+fprintf('*******************************\n')
+
+
+% 3) draw figures for RPE, ATE
+figure;
+plot(RPE_PIVO); grid on;
+xlabel('Time [ # of images]','fontsize',10); ylabel('PIVO drift error [m/s]','fontsize',10);
+title('Relative Pose Error (RPE) versus time index','fontsize',15)
+
+figure;
+plot(ATE_PIVO); grid on;
+xlabel('Time [ # of images]','fontsize',10); ylabel('PIVO absolute trajectory error [m]','fontsize',10);
+title('Absolute Trajectory Error (ATE) versus time index','fontsize',15)
+
+
+% 4) each frame's residual result of PIVO
 figure;
 plot(meanErrorRec,'r','LineWidth',1); grid on;
 title('PIVO cost value of PIVO','fontsize',10);
 xlabel('The index of image frame','fontsize',10); ylabel('Residual','fontsize',10);
 
 
-% 3) total traveling distance of this dataset by PIVO
+% 5) total traveling distance of this dataset by PIVO
 dDistance = diff(stateEsti_PIVO(1:3,:),1,2);
 lengthDataset = sum(sqrt(sum(dDistance.^2,1)));
 fprintf('*******************************\n')
@@ -204,10 +228,10 @@ fprintf('Total traveled distance [m] : %f \n' , lengthDataset);
 fprintf('*******************************\n')
 
 
-%% save the experiment data for TRO 2017
+%% save the experiment data for AURO 2019
 
 if (toSave)
-    save([SaveDir '/PIVO_vopp_discussion.mat']);
+    save([SaveDir '/PIVO.mat']);
 end
 
 

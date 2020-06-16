@@ -1,6 +1,4 @@
 # Mex result files
-*.mexw64
-*.mexa64
 
 
 # Matlab variables
@@ -10,3 +8,4 @@
 # backup files
 *~
 *.gif
+ICL-NUIMdataset/of_kt3/AURO2019

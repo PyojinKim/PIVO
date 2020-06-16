@@ -16,8 +16,8 @@ pixelCnt = 0;
 for p = 1:featureNum
     
     % setting starting point ( top-left pixel point of the patch )
-    uStart = featurePts(1, p) - ((winSize-1)/2) ;
-    vStart = featurePts(2, p) - ((winSize-1)/2) ;
+    uStart = featurePts(1,p) - ((winSize-1)/2) ;
+    vStart = featurePts(2,p) - ((winSize-1)/2) ;
     
     for rows = 0:(winSize-1)
         for cols = 0:(winSize-1)
@@ -34,9 +34,9 @@ for p = 1:featureNum
         end
     end
 end
-pixelPtsRef(:, (pixelCnt+1):end) = [];
-depthPtsRef(:, (pixelCnt+1):end) = [];
-patchIdxRef(:, (pixelCnt+1):end) = [];
+pixelPtsRef(:,(pixelCnt+1):end) = [];
+depthPtsRef(:,(pixelCnt+1):end) = [];
+patchIdxRef(:,(pixelCnt+1):end) = [];
 
 
 %% update camera motion (Jacobian & residual)
