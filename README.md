@@ -26,7 +26,9 @@ if you use PIVO in an academic work, please cite:
 	 
 	
 # 2. Prerequisites
-MATLAB
+This package is tested on the MATLAB R2019b on Windows 7 64-bit.
+Some of the functions such as warpEntireImage_mex.mexw64 are compiled as MEX file to speed up the computation.
+You can use warpEntireImage.m instead if you cannot compile MEX file.
 
 
 # 3. Usage
