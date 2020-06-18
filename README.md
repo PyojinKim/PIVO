@@ -2,29 +2,16 @@
 This package provides a MATLAB implementation of AURO 2019 & IROS 2015 papers: "Autonomous Flight with Robust Visual Odometry under Dynamic Lighting Conditions" & "Robust Visual Odometry to Irregular Illumination Changes with RGB-D camera" for the purpose of research and study only.
 Note that this repository only includes simplified proposed direct visual odometry example codes to understand how the PIVO works under light-changing environments.
 
-![PIVO](https://github.com/PyojinKim/PIVO/blob/master/teaser.png)
+![PIVO](https://github.com/PyojinKim/PIVO/blob/master/overview.png)
 
 
-# 1. License
-The package is licensed under the MIT License, see http://opensource.org/licenses/MIT.
+# 1. Goal
+Our goal is to estimate 6-DoF camera motion with respect to the light-changing environments.
+The proposed illumination-robust direct visual odometry achieves robustness with respect to the light-changing environments by employing the patch-based affine illumination model to compensate abrupt, irregular illumination changes during direct motion estimation.
 
-if you use PIVO in an academic work, please cite:
+![PIVO](https://github.com/PyojinKim/PIVO/blob/master/result.png)
 
-    @inproceedings{kim2019autonomous,
-	  author = {Kim, Pyojin and Lee, Hyeonbeom and Kim, H Jin},
-	  title = {Autonomous Flight with Robust Visual Odometry under Dynamic Lighting Conditions},
-      year = {2019},
-	  booktitle = {Autonomous Robots (AURO)},
-     }
-	 
-	@inproceedings{kim2015robust,
-	  author = {Kim, Pyojin and Lim, Hyon and Kim, H Jin},
-      title = {Robust Visual Odometry to Irregular Illumination Changes with RGB-D camera},
-      year = {2015},
-      booktitle = {IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
-	 }
-	 
-	
+
 # 2. Prerequisites
 This package is tested on the MATLAB R2019b on Windows 7 64-bit.
 Some of the functions such as warpEntireImage_mex.mexw64 are compiled as MEX file to speed up the computation.
@@ -49,3 +36,24 @@ The approach is described and used in the following publications:
 * **Robust Visual Odometry to Irregular Illumination Changes with RGB-D camera** (Pyojin Kim, Hyon Lim, and H. Jin Kim), IROS 2015.
 
 You can find more related papers at http://pyojinkim.com/_pages/pub/index.html.
+
+
+# 5. License
+The package is licensed under the MIT License, see http://opensource.org/licenses/MIT.
+
+if you use PIVO in an academic work, please cite:
+
+    @inproceedings{kim2019autonomous,
+	  author = {Kim, Pyojin and Lee, Hyeonbeom and Kim, H Jin},
+	  title = {Autonomous Flight with Robust Visual Odometry under Dynamic Lighting Conditions},
+      year = {2019},
+	  booktitle = {Autonomous Robots (AURO)},
+     }
+	 
+	@inproceedings{kim2015robust,
+	  author = {Kim, Pyojin and Lim, Hyon and Kim, H Jin},
+      title = {Robust Visual Odometry to Irregular Illumination Changes with RGB-D camera},
+      year = {2015},
+      booktitle = {IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+	 }
+
